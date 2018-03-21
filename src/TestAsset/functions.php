@@ -15,3 +15,8 @@ function factory(ContainerInterface $container, string $name) : Service
 {
     return new Service();
 }
+
+function factoryWithName(ContainerInterface $container, string $name) : array
+{
+    return func_get_args();
+}
