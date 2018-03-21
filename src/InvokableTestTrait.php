@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace Zend\ContainerConfigTest;
 
+use Psr\Container\ContainerExceptionInterface;
+
 trait InvokableTestTrait
 {
     public function testCanSpecifyInvokableWithoutKey() : void
@@ -80,5 +82,20 @@ trait InvokableTestTrait
         self::assertInstanceOf(TestAsset\Service::class, $originService);
         self::assertSame($service, $originService);
         self::assertSame($originService, $container->get(TestAsset\Service::class));
+    }
+
+    public function testInvokbaleServiceIsNotInvokable()
+    {
+        $config = [
+            'invokables' => [
+                'alias' => TestAsset\FactoryWithRequiredParameters::class,
+            ],
+        ];
+
+        $container = $this->createContainer($config);
+
+        self::assertTrue($container->get('alias'));
+        $this->expectException(ContainerExceptionInterface::class);
+        $container->get('alias');
     }
 }
