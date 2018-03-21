@@ -62,14 +62,14 @@ trait DelegatorTestTrait
         self::assertSame($myService, $instance);
     }
 
-    public function testDelegatorsOperateOnFactoryBackedServices() : void
+    /**
+     * @dataProvider factory
+     */
+    public function testDelegatorsOperateOnFactoryBackedServices(array $config) : void
     {
-        $config = [
-            'factories' => [
-                'foo-bar' => TestAsset\Factory::class,
-            ],
+        $config += [
             'delegators' => [
-                'foo-bar' => [
+                'service' => [
                     TestAsset\DelegatorFactory::class,
                 ],
             ],
@@ -77,13 +77,13 @@ trait DelegatorTestTrait
 
         $container = $this->createContainer($config);
 
-        self::assertTrue($container->has('foo-bar'));
-        $instance = $container->get('foo-bar');
+        self::assertTrue($container->has('service'));
+        $instance = $container->get('service');
         self::assertInstanceOf(TestAsset\Delegator::class, $instance);
         self::assertInstanceOf(TestAsset\Service::class, ($instance->callback)());
 
         // Retrieving a second time should retrieve the same instance.
-        self::assertSame($instance, $container->get('foo-bar'));
+        self::assertSame($instance, $container->get('service'));
     }
 
     public function testDelegatorsApplyToInvokableServiceResolvedViaAlias() : void
@@ -199,14 +199,14 @@ trait DelegatorTestTrait
         self::assertSame($instance, $container->get('foo-bar'));
     }
 
-    public function testDelegatorsDoNotTriggerForAliasTargetingFactoryBasedService() : void
+    /**
+     * @dataProvider factory
+     */
+    public function testDelegatorsDoNotTriggerForAliasTargetingFactoryBasedService(array $config) : void
     {
-        $config = [
+        $config += [
             'aliases' => [
-                'alias' => 'foo-bar',
-            ],
-            'factories' => [
-                'foo-bar' => TestAsset\Factory::class,
+                'alias' => 'service',
             ],
             'delegators' => [
                 'alias' => [
@@ -224,7 +224,7 @@ trait DelegatorTestTrait
 
         // Now ensure that the instance already retrieved by alias is the same
         // as that when fetched by the canonical service name.
-        self::assertSame($instance, $container->get('foo-bar'));
+        self::assertSame($instance, $container->get('service'));
     }
 
     public function testDelegatorsDoNotTriggerForAliasTargetingInvokableService() : void
@@ -255,17 +255,17 @@ trait DelegatorTestTrait
         self::assertSame($instance, $container->get(TestAsset\Service::class));
     }
 
-    public function testDelegatorsTriggerForFactoryServiceResolvedByAlias() : void
+    /**
+     * @dataProvider factory
+     */
+    public function testDelegatorsTriggerForFactoryServiceResolvedByAlias(array $config) : void
     {
-        $config = [
+        $config += [
             'aliases' => [
-                'alias' => 'foo-bar',
-            ],
-            'factories' => [
-                'foo-bar' => TestAsset\Factory::class,
+                'alias' => 'service',
             ],
             'delegators' => [
-                'foo-bar' => [
+                'service' => [
                     TestAsset\DelegatorFactory::class,
                 ],
             ],
@@ -280,7 +280,7 @@ trait DelegatorTestTrait
 
         // Now ensure that the instance already retrieved by alias is the same
         // as that when fetched by the canonical service name.
-        self::assertSame($instance, $container->get('foo-bar'));
+        self::assertSame($instance, $container->get('service'));
 
         // Now ensure that subsequent retrievals by alias retrieve the same
         // instance.
@@ -305,14 +305,6 @@ trait DelegatorTestTrait
             TestAsset\Service::class,
         ];
 
-        yield 'factory-service' => [
-            [
-                'factories' => ['foo-bar' => TestAsset\Factory::class],
-            ],
-            'foo-bar',
-            'foo-bar',
-        ];
-
         yield 'alias-of-invokable' => [
             [
                 'aliases' => ['foo-bar' => TestAsset\Service::class],
@@ -322,14 +314,19 @@ trait DelegatorTestTrait
             TestAsset\Service::class,
         ];
 
-        yield 'alias-of-factory-service' => [
-            [
-                'aliases' => ['alias' => 'foo-bar'],
-                'factories' => ['foo-bar' => TestAsset\Factory::class],
-            ],
-            'alias',
-            'foo-bar',
-        ];
+        foreach ($this->factory() as $name => $params) {
+            yield 'factory-service-' . $name => [
+                $params[0],
+                'service',
+                'service',
+            ];
+
+            yield 'alias-of-factory-service-' . $name => [
+                $params[0] + ['aliases' => ['alias' => 'service']],
+                'alias',
+                'service',
+            ];
+        }
     }
 
     /**
